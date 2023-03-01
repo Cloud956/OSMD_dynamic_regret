@@ -1,1 +1,1 @@
-# OSMD_dynamic_regret
+# Online-Stochastic-Mirror-Descent
