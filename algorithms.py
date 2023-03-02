@@ -52,7 +52,7 @@ class Algorithms:
         return i
 
 
-    def osmd(self, eta: float, paths: list, rounds: int):
+    def exp2(self, eta: float, paths: list, rounds: int):
         # initialize probability vector
         P = [1/len(paths)] * len(paths)
         print("P_1 = " + str(P))

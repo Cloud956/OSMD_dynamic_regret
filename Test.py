@@ -20,7 +20,7 @@ print("Vertex paths:\n" + str(paths))
 encoded_paths = algs.encode(paths)
 print("\nEncoded paths:\n" + str(encoded_paths))
 
-algs.osmd(0.1, encoded_paths, 15)
+algs.exp2(0.1, encoded_paths, 15)
 
 gv = GridGraphVisualizer(gg)
 gv.visualize(s, t)
