@@ -1,16 +1,21 @@
 from point import Point, Path, Edge
 from copy import deepcopy
 import numpy as np
+import random
 
 
 class Algos:
-    def __init__(self, height,length, path_len,start,goal):
+    def __init__(self, height, length, path_len, start, goal, cost_bound):
         self.path_len = path_len
-        self.edges_max = (2 * height*length) - height-length
-        self.h=height
-        self.l=length
-        self.start=start
-        self.goal=goal
+        self.edges_max = (2 * height * length) - height - length
+        self.h = height
+        self.l = length
+        self.start = start
+        self.goal = goal
+        self.cost_bound = cost_bound
+        self.cost = self.regenerate_cost()
+        self.probabilities = None
+        self.paths = None
     def points_to_index(self, p1, p2):
         x1, y1 = p1.xy()
         x2, y2 = p2.xy()
@@ -21,17 +26,36 @@ class Algos:
             xlow = min(x1, x2)
             return (self.h - 1) * (y1 - 1) + (xlow - 1) + (self.h * (self.l - 1))
 
-    def is_valid_point(self, x,y):
-        return 0 < x < (self.h + 1) and 0 < y < (self.l+1)
+    def is_valid_point(self, x, y):
+        return 0 < x < (self.h + 1) and 0 < y < (self.l + 1)
 
-    def point_can_reach(self,point,depth):
+    def point_can_reach(self, point, depth):
         min_distance = self.goal.sum() - point.sum()
         remaining_moves = self.path_len - depth - 1
         rest = remaining_moves - min_distance
         if rest % 2 == 0 and rest >= 0:
             return True
         return False
-    def find_point_neighbours(self, point,depth):
+
+    def initialize_probabilities(self,paths):
+        self.paths = paths
+        number = len(paths)
+        self.probabilities = [1/number]*number
+
+    def make_a_choice(self):
+        probs = self.probabilities
+        roll = random.random()
+        total=0
+        for i in range(len(probs)):
+            total += probs[i]
+            if roll <= total:
+                #print(f"ROLLED {roll} RETURNING {i}")
+                return i
+    def get_loss(self,choice):
+        print(choice)
+        print(self.cost)
+        return np.dot(self.cost,choice)
+    def find_point_neighbours(self, point, depth):
         neighbours = []
         x, y = point.xy()
         for a in range(x - 1, x + 2):
@@ -44,7 +68,7 @@ class Algos:
         children = []
         past = path.path
         last_point = path.end
-        neighbours = self.find_point_neighbours(last_point,len(path))
+        neighbours = self.find_point_neighbours(last_point, len(path))
         for neighbour in neighbours:
             new_edge = Edge(self.points_to_index(last_point, neighbour), last_point, neighbour)
             if new_edge not in past:
@@ -53,8 +77,16 @@ class Algos:
                 children.append(Path(past_copy, neighbour))
         return children
 
+    def regenerate_cost(self):
+        nums = []
+        for i in range(self.edges_max):
+            nums.append(random.random())
+        multiplication = int(self.cost_bound / 0.5)
+        nums = [multiplication * (i - 0.5) for i in nums]
+        return nums
+
     def bfs_path(self):
-        current_wave = [Path([],self.start)]
+        current_wave = [Path([], self.start)]
         for i in range(self.path_len):
             next_wave = []
             for p in current_wave:

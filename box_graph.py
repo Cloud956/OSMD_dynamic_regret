@@ -3,7 +3,6 @@ from point import Point
 from algorithms import Algos
 
 print("Input the desired size of the matrix (Height,Length)")
-print(0%3 == 0)
 height,length = eval(input())
 
 print("Enter start point coords -> a,b")
@@ -20,12 +19,17 @@ if gx < 0 or gy < 0 or gx > height or gy > length:
     sys.exit(2)
 print("Enter desired length of path")
 path_len = eval(input())
-print(start)
-print(goal)
-algo = Algos(height,length, path_len,start,goal)
+print("Enter desired d bound for the cost vector")
+cost_bound = eval(input())
+
+algo = Algos(height,length, path_len,start,goal,cost_bound)
+
+
 paths = algo.bfs_path()
-for p in paths:
-    print(p.path)
 b_paths = algo.paths_to_boolean(paths)
-for p in b_paths:
-    print(p)
+
+algo.initialize_probabilities(b_paths)
+print(algo.probabilities)
+index = algo.make_a_choice()
+loss = algo.get_loss(b_paths[index])
+print(loss)
