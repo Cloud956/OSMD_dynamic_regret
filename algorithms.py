@@ -1,5 +1,5 @@
-from queue import Queue
 from Graphs import *
+import numpy as np
 
 class Algorithms:
 
@@ -14,13 +14,14 @@ class Algorithms:
             visited = set(path)
             for neighbor in self.graph.get_neighbors(vertex):
                 if neighbor not in visited and len(path) <= m:
-                    if neighbor == t:
+                    if neighbor == t and len(path) == m:
                         paths.append(path + [neighbor])
                     else:
                         queue.append((neighbor, path + [neighbor]))
         return paths
     
     def encode(self, paths):
+        print("\nEdge paths:")
         encoded_paths = []
         for path in paths:
             edges = []
@@ -41,3 +42,45 @@ class Algorithms:
             binary_list[num] = 1
 
         return binary_list
+
+    def action(self, P):
+        U = np.random.uniform()
+        CDF = [sum(P[:i+1]) for i in range(len(P))]
+        i = 0
+        while CDF[i] < U:
+            i += 1
+        return i
+
+
+    def osmd(self, eta: float, paths: list, rounds: int):
+        # initialize probability vector
+        P = [1/len(paths)] * len(paths)
+        print("P_1 = " + str(P))
+
+        # loop through the rounds
+        for t in range(1, rounds+1):
+            a = self.action(P)
+            print("a_" + str(t) + " = " + str(a))
+
+            z = self.graph.get_all_edge_weights()
+            print("z_" + str(t) + " = " + str(z))
+
+            P_new = [None] * len(paths)
+            for a in range(len(paths)):
+                numerator = P[a] * np.exp(-eta * np.inner(z, paths[a]))
+                denominator = 0
+                for b in range(len(paths)):
+                    if b != a:
+                        denominator += P[b] * np.exp(-eta * np.inner(z, paths[b]))
+
+                P_new[a] = numerator / denominator
+
+            P_new = P_new/np.sum(P_new)
+            P = P_new
+            print("P_" + str(t) + " = " + str(np.round(P, 2)))
+            self.graph.update_edge_weights()
+
+            # check if probabilities have converged
+            for i in P:
+                if (1-i) <= 0.0001:
+                    return
