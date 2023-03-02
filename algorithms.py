@@ -5,30 +5,30 @@ import numpy as np
 
 
 class Algos:
-    def __init__(self, size, path_len):
+    def __init__(self, height,length, path_len):
         self.path_len = path_len
-        self.n = size
-        self.edges_max = 2 * pow(size, 2) - 2 * size
-
+        self.edges_max = (2 * height*length) - height-length
+        self.h=height
+        self.l=length
     def points_to_index(self, p1, p2):
         x1, y1 = p1.xy()
         x2, y2 = p2.xy()
         if x1 == x2:  # left-right
             ylow = min(y2, y1)
-            return (self.n - 1) * (x1 - 1) + (ylow - 1)
+            return (self.l - 1) * (x1 - 1) + (ylow - 1)
         elif y1 == y2:
             xlow = min(x1, x2)
-            return (self.n - 1) * (y1 - 1) + (xlow - 1) + (self.n * (self.n - 1))
+            return (self.h - 1) * (y1 - 1) + (xlow - 1) + (self.h * (self.l - 1))
 
-    def is_valid_point(self, index):
-        return 0 < index < (self.n + 1)
+    def is_valid_point(self, x,y):
+        return 0 < x < (self.h + 1) and 0 < y < (self.l+1)
 
     def find_point_neighbours(self, point):
         neighbours = []
         x, y = point.xy()
         for a in range(x - 1, x + 2):
             for b in range(y - 1, y + 2):
-                if (a == x) != (b == y) and self.is_valid_point(a) and self.is_valid_point(b):
+                if (a == x) != (b == y) and self.is_valid_point(a,b):
                     neighbours.append(Point(a, b))
         return neighbours
 
