@@ -2,10 +2,10 @@ from point import Point, Path, Edge
 from copy import deepcopy
 import numpy as np
 import random
-
+from math import exp
 
 class Algos:
-    def __init__(self, height, length, path_len, start, goal, cost_bound):
+    def __init__(self, height, length, path_len, start, goal, cost_bound,learning_rate):
         self.path_len = path_len
         self.edges_max = (2 * height * length) - height - length
         self.h = height
@@ -16,6 +16,8 @@ class Algos:
         self.cost = self.regenerate_cost()
         self.probabilities = None
         self.paths = None
+        self.learn = learning_rate
+        self.bpath=None
     def points_to_index(self, p1, p2):
         x1, y1 = p1.xy()
         x2, y2 = p2.xy()
@@ -37,9 +39,8 @@ class Algos:
             return True
         return False
 
-    def initialize_probabilities(self,paths):
-        self.paths = paths
-        number = len(paths)
+    def initialize_probabilities(self):
+        number = len(self.paths)
         self.probabilities = [1/number]*number
 
     def make_a_choice(self):
@@ -50,11 +51,19 @@ class Algos:
             total += probs[i]
             if roll <= total:
                 #print(f"ROLLED {roll} RETURNING {i}")
-                return i
+                return self.bpath[i],i
     def get_loss(self,choice):
-        print(choice)
-        print(self.cost)
-        return np.dot(self.cost,choice)
+        #print(choice)
+       # print(self.cost)
+        return np.dot(self.cost,np.transpose(choice))
+    def min_loss(self):
+        nums=[]
+        for p in self.bpath:
+            nums.append(np.dot(self.cost,p))
+        return min(nums)
+    def normal_regret(self,choice):
+        minimal = self.min_loss()
+        return np.dot(self.cost,choice)-minimal
     def find_point_neighbours(self, point, depth):
         neighbours = []
         x, y = point.xy()
@@ -63,7 +72,10 @@ class Algos:
                 if (a == x) != (b == y) and self.is_valid_point(a, b):
                     neighbours.append(Point(a, b))
         return [i for i in neighbours if self.point_can_reach(i, depth)]
-
+    def init_paths(self):
+        path = self.bfs_path()
+        self.paths = path
+        self.bpath = self.paths_to_boolean(path)
     def get_next_paths(self, path):
         children = []
         past = path.path
@@ -83,7 +95,7 @@ class Algos:
             nums.append(random.random())
         multiplication = int(self.cost_bound / 0.5)
         nums = [multiplication * (i - 0.5) for i in nums]
-        return nums
+        self.cost = nums
 
     def bfs_path(self):
         current_wave = [Path([], self.start)]
@@ -94,6 +106,26 @@ class Algos:
                 next_wave.extend(children)
             current_wave = next_wave
         return [i for i in current_wave if i.end == self.goal]
+    def exp2_main(self):
+        probs = []
+        for i in range(len(self.bpath)):
+            path=self.bpath[i]
+            top,bot = self.exp2_components(self.cost,path)
+            probs.append(self.probabilities[i]*top/bot)
+
+        print(probs)
+        print(sum(probs))
+        self.probabilities = probs
+    def exp2_components(self,cost,choice):
+        learn_var = -1*self.learn
+        top = exp(learn_var * np.dot(cost,choice))
+        bot = 0
+        zT = np.array(self.cost).transpose()
+        for i in range(len(self.bpath)):
+            bT = np.array(self.bpath[i]).transpose()
+            addition = exp(learn_var * np.dot(bT,zT)) * self.probabilities[i]
+            bot+=addition
+        return top,bot
 
     def paths_to_boolean(self, paths):
         b_paths = []
