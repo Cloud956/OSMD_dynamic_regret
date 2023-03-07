@@ -114,8 +114,8 @@ class Algos:
             path=self.bpath[i]
             top= self.exp2_top(path)
             probs.append(self.probabilities[i]*top/bot)
-        print(probs)
-        print(sum(probs))
+        #print(probs)
+        #print(sum(probs))
         self.probabilities = probs
     def exp2_top(self,choice):
         learn_var = -1*self.learn

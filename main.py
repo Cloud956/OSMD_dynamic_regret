@@ -34,7 +34,7 @@ def do_setup():
 def do_rounds(algo,turns):
     regrets = []
     for i in range(turns):
-       # algo.regenerate_cost()
+        algo.regenerate_cost()
         choice,index = algo.make_a_choice()
         loss = algo.get_loss(choice)
         regret = algo.normal_regret(choice)
@@ -42,6 +42,7 @@ def do_rounds(algo,turns):
         algo.exp2_main()
    # b=2
     plt.plot(regrets)
+    plt.title('Regret over time')
     plt.show()
     #print(loss)
 if __name__ == '__main__':
@@ -49,3 +50,5 @@ if __name__ == '__main__':
     print("Enter T")
     T=eval(input())
     do_rounds(algo,T)
+    print("Final probabilities are:")
+    print(algo.probabilities)
