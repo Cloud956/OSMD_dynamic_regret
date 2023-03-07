@@ -34,7 +34,7 @@ def do_setup():
 def do_rounds(algo,turns):
     regrets = []
     for i in range(turns):
-        algo.regenerate_cost()
+       # algo.regenerate_cost()
         choice,index = algo.make_a_choice()
         loss = algo.get_loss(choice)
         regret = algo.normal_regret(choice)

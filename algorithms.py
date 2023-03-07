@@ -13,11 +13,12 @@ class Algos:
         self.start = start
         self.goal = goal
         self.cost_bound = cost_bound
-        self.cost = self.regenerate_cost()
+        self.cost = None
         self.probabilities = None
         self.paths = None
         self.learn = learning_rate
         self.bpath=None
+        self.regenerate_cost()
     def points_to_index(self, p1, p2):
         x1, y1 = p1.xy()
         x2, y2 = p2.xy()
@@ -108,25 +109,27 @@ class Algos:
         return [i for i in current_wave if i.end == self.goal]
     def exp2_main(self):
         probs = []
+        bot = self.exp2_bot()
         for i in range(len(self.bpath)):
             path=self.bpath[i]
-            top,bot = self.exp2_components(self.cost,path)
+            top= self.exp2_top(path)
             probs.append(self.probabilities[i]*top/bot)
-
         print(probs)
         print(sum(probs))
         self.probabilities = probs
-    def exp2_components(self,cost,choice):
+    def exp2_top(self,choice):
         learn_var = -1*self.learn
-        top = exp(learn_var * np.dot(cost,choice))
+        top = exp(learn_var * np.dot(self.cost,choice))
+        return top
+    def exp2_bot(self):
+        learn_var = -1 * self.learn
         bot = 0
         zT = np.array(self.cost).transpose()
         for i in range(len(self.bpath)):
             bT = np.array(self.bpath[i]).transpose()
-            addition = exp(learn_var * np.dot(bT,zT)) * self.probabilities[i]
-            bot+=addition
-        return top,bot
-
+            addition = exp(learn_var * np.dot(bT, zT)) * self.probabilities[i]
+            bot += addition
+        return bot
     def paths_to_boolean(self, paths):
         b_paths = []
         for p in paths:
