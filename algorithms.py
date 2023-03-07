@@ -59,26 +59,26 @@ class Algorithms:
 
         # loop through the rounds
         for t in range(1, rounds+1):
-            a = self.action(P)
+            self.graph.update_edge_weights()                        # "adversary" generates new edge weights
+
+            a = self.action(P)                                      # decision maker chooses action based on probability vector P_t
             print("a_" + str(t) + " = " + str(a))
 
-            z = self.graph.get_all_edge_weights()
+            z = self.graph.get_all_edge_weights()                   # decision maker is "informed" of loss vector z_t
             print("z_" + str(t) + " = " + str(z))
 
+            # calculate P_t+1
             P_new = [None] * len(paths)
             for a in range(len(paths)):
                 numerator = P[a] * np.exp(-eta * np.inner(z, paths[a]))
                 denominator = 0
                 for b in range(len(paths)):
-                    if b != a:
-                        denominator += P[b] * np.exp(-eta * np.inner(z, paths[b]))
+                    denominator += P[b] * np.exp(-eta * np.inner(z, paths[b]))
 
                 P_new[a] = numerator / denominator
 
-            P_new = P_new/np.sum(P_new)
             P = P_new
             print("P_" + str(t) + " = " + str(np.round(P, 2)))
-            self.graph.update_edge_weights()
 
             # check if probabilities have converged
             for i in P:
