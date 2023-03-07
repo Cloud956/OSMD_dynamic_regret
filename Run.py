@@ -22,6 +22,7 @@ print("\nEncoded paths:\n" + str(encoded_paths) + "\n")
 # run the EXP(2) algorithm
 regret = algs.exp2(eta=0.01, paths=encoded_paths, rounds=10000)
 
+# Calculate and print the regret over all the rounds
 print("\ntotal regret =\t\t" + str(sum(regret)/len(regret)))
 
 # visualize the graph
