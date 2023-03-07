@@ -50,37 +50,62 @@ class Algorithms:
         while CDF[i] < U:
             i += 1
         return i
+    
+    def update_probabilities(self, probabilities: list, costs: list, eta: float, paths: list):
+        P_new = [None] * len(paths)
+        for a in range(len(paths)):
+            numerator = probabilities[a] * np.exp(-eta * np.inner(costs, paths[a]))
+            denominator = 0
+            for b in range(len(paths)):
+                denominator += probabilities[b] * np.exp(-eta * np.inner(costs, paths[b]))
 
+            P_new[a] = numerator / denominator
+        return P_new
+
+    def minimal_loss(self, costs: list, paths: list):
+        min = float('inf')
+        for path in paths:
+            loss = self.loss(costs, path)
+            if loss < min:
+                min = loss
+        return min
+
+    def loss(self, costs: list, path: list):
+        return np.inner(costs, path)
 
     def exp2(self, eta: float, paths: list, rounds: int):
         # initialize probability vector
-        P = [1/len(paths)] * len(paths)
-        print("P_1 = " + str(P))
+        probabilities = [1/len(paths)] * len(paths)
+        regret = []
 
         # loop through the rounds
         for t in range(1, rounds+1):
+            
+            # check if probabilities have converged
+            for i in probabilities:
+                if (1-i) <= 0.001:
+                    return regret
+
+            print("\nround " + str(t) + " ↓")
             self.graph.update_edge_weights()                        # "adversary" generates new edge weights
 
-            a = self.action(P)                                      # decision maker chooses action based on probability vector P_t
-            print("a_" + str(t) + " = " + str(a))
+            print("probabilities =\t\t" + str(np.round(probabilities, 2)))
 
-            z = self.graph.get_all_edge_weights()                   # decision maker is "informed" of loss vector z_t
-            print("z_" + str(t) + " = " + str(z))
+            # choose an action
+            action = self.action(probabilities)                                      # decision maker chooses action based on probability vector P_t
+            print("action =\t\t" + str(action))
+
+            # reveal costs
+            costs = self.graph.get_all_edge_weights()                   # decision maker is "informed" of loss vector z_t
+            print("costs =\t\t\t" + str(costs))
+
+            # calculate regret
+            actual_loss = self.loss(costs, paths[action])
+            minimum_loss = self.minimal_loss(costs, paths)
+            regret.append(actual_loss - minimum_loss)
+            print("regret =\t\t" + str(regret[-1]))
 
             # calculate P_t+1
-            P_new = [None] * len(paths)
-            for a in range(len(paths)):
-                numerator = P[a] * np.exp(-eta * np.inner(z, paths[a]))
-                denominator = 0
-                for b in range(len(paths)):
-                    denominator += P[b] * np.exp(-eta * np.inner(z, paths[b]))
-
-                P_new[a] = numerator / denominator
-
-            P = P_new
-            print("P_" + str(t) + " = " + str(np.round(P, 2)))
-
-            # check if probabilities have converged
-            for i in P:
-                if (1-i) <= 0.0001:
-                    return
+            probabilities = self.update_probabilities(probabilities, costs, eta, paths)
+                
+        return regret
