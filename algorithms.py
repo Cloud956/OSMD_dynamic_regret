@@ -87,12 +87,12 @@ class Algorithms:
                     return regret
 
             print("\nround " + str(t) + " ↓")
-            self.graph.update_edge_weights()                        # "adversary" generates new edge weights
+            self.graph.update_edge_weights()                            # "adversary" generates new edge weights
 
             print("probabilities =\t\t" + str(np.round(probabilities, 2)))
 
             # choose an action
-            action = self.action(probabilities)                                      # decision maker chooses action based on probability vector P_t
+            action = self.action(probabilities)                         # decision maker chooses action based on probability vector P_t
             print("action =\t\t" + str(action))
 
             # reveal costs
