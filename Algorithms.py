@@ -53,21 +53,25 @@ class Algorithms:
     
     def update_probabilities(self, probabilities: list, costs: list, eta: float, paths: list):
         P_new = [None] * len(paths)
-        for a in range(len(paths)):
-            numerator = probabilities[a] * np.exp(-eta * np.inner(costs, paths[a]))
-            denominator = 0
-            for b in range(len(paths)):
+        denominator = 0
+        
+        for b in range(len(paths)):
                 denominator += probabilities[b] * np.exp(-eta * np.inner(costs, paths[b]))
 
+        for a in range(len(paths)):
+            numerator = probabilities[a] * np.exp(-eta * np.inner(costs, paths[a]))
             P_new[a] = numerator / denominator
+        
         return P_new
 
-    def minimal_loss(self, costs: list, paths: list):
+    def min_total_loss(self, costs: list, paths: list):
         min = float('inf')
         for path in paths:
-            loss = self.loss(costs, path)
-            if loss < min:
-                min = loss
+            total_loss = 0
+            for cost in costs:
+                total_loss += self.loss(cost, path)
+            if total_loss < min:
+                min = total_loss
         return min
 
     def loss(self, costs: list, path: list):
@@ -76,36 +80,43 @@ class Algorithms:
     def exp2(self, eta: float, paths: list, rounds: int):
         # initialize probability vector
         probabilities = [1/len(paths)] * len(paths)
-        regret = []
+        losses = []
+        costs = []
+        #regret = []
 
         # loop through the rounds
         for t in range(1, rounds+1):
-            
-            # check if probabilities have converged
-            for i in probabilities:
-                if (1-i) <= 0.001:
-                    return regret
 
-            print("\nround " + str(t) + " ↓")
+            #print("\nround " + str(t) + " ↓")
             self.graph.update_edge_weights()                            # "adversary" generates new edge weights
 
             print("probabilities =\t\t" + str(np.round(probabilities, 2)))
 
             # choose an action
             action = self.action(probabilities)                         # decision maker chooses action based on probability vector P_t
-            print("action =\t\t" + str(action))
+            #print("action =\t\t" + str(action))
 
             # reveal costs
-            costs = self.graph.get_all_edge_weights()                   # decision maker is "informed" of loss vector z_t
-            print("costs =\t\t\t" + str(costs))
+            cost = self.graph.get_all_edge_weights()
+            costs.append(cost)                   # decision maker is "informed" of loss vector z_t
+            #print("costs =\t\t\t" + str(costs))
 
-            # calculate regret
-            actual_loss = self.loss(costs, paths[action])
-            minimum_loss = self.minimal_loss(costs, paths)
-            regret.append(actual_loss - minimum_loss)
-            print("regret =\t\t" + str(regret[-1]))
+            # calculate and store loss
+            losses.append(self.loss(cost, paths[action]))
+
+            #minimum_loss = self.minimal_loss(costs[-1], paths)
+            #regret.append(actual_loss - minimum_loss)                   # change to calculate with the minimal decision over all the rounds
+            #print("regret =\t\t" + str(regret[-1]))
 
             # calculate P_t+1
-            probabilities = self.update_probabilities(probabilities, costs, eta, paths)
-                
-        return regret
+            probabilities = self.update_probabilities(probabilities, cost, eta, paths)
+
+        expected_loss = sum(losses) / len(losses)
+        expected_loss_best_action = self.min_total_loss(costs, paths) / len(costs)
+
+        print("\nexpected loss =\t\t\t\t\t", expected_loss)
+        print("expected loss for best action overall =\t\t", expected_loss_best_action)
+
+        total_regret = expected_loss - expected_loss_best_action
+
+        return total_regret
