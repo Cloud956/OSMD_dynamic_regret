@@ -22,10 +22,10 @@ encoded_paths = algs.encode(paths)
 print("\nEncoded paths:\n" + str(encoded_paths) + "\n")
 
 # run the EXP(2) algorithm
-total_regret = algs.exp2(eta=0.01, paths=encoded_paths, rounds=5000)
+total_regret = algs.exp2(eta=0.01, paths=encoded_paths, rounds=10000)
 
 # Calculate and print the regret over all the rounds
-print("\ntotal regret =\t\t" + str(total_regret))
+print("\ntotal regret =\t\t\t\t\t" + str(total_regret))
 
 # visualize the graph
 gv = GridGraphVisualizer(gg) # for the visualization, each edge has a tuple for the label with the following structure: (id, weight)

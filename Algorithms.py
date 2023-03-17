@@ -114,8 +114,8 @@ class Algorithms:
         expected_loss = sum(losses) / len(losses)
         expected_loss_best_action = self.min_total_loss(costs, paths) / len(costs)
 
-        print("\nexpected loss =\t\t\t\t\t", expected_loss)
-        print("expected loss for best action overall =\t\t", expected_loss_best_action)
+        print("\nexpected loss =\t\t\t\t\t" + str(expected_loss))
+        print("expected loss for best action overall =\t\t" + str(expected_loss_best_action))
 
         total_regret = expected_loss - expected_loss_best_action
 
