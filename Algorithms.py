@@ -96,7 +96,7 @@ class Algorithms:
         probabilities = [1/len(paths)] * len(paths)
         losses = []
         loss_vectors = []
-        progress = -10
+        progress = 0
 
         # loop through the rounds
         for t in range(1, rounds+1):
@@ -129,12 +129,13 @@ class Algorithms:
             # calculate P_t+1
             probabilities = self.update_probabilities(probabilities, loss_vector, eta, paths)
 
+        print("\ncalculating total regret...")
+
         expected_loss = sum(losses) / len(losses)
         best_action, total_loss_best_action = self.min_total_loss(loss_vectors, paths)
         expected_loss_best_action = total_loss_best_action / len(loss_vectors)
-
-        print('exp2 algo finished...\n')
-        print("final probabilities =\t\t\t\t" + str(np.round(probabilities, 2)))
+        
+        print("\nfinal probabilities =\t\t\t\t" + str(np.round(probabilities, 2)))
 
         print("best action (in hindsight) =\t\t\t" + str(best_action))
 
