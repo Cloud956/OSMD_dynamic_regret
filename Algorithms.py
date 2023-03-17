@@ -3,7 +3,7 @@ import numpy as np
 
 class Algorithms:
 
-    def __init__(self, graph):
+    def __init__(self, graph: None):
         self.graph = graph
 
     def bfs_paths(self, s, t, m):
@@ -51,15 +51,15 @@ class Algorithms:
             i += 1
         return i
     
-    def update_probabilities(self, probabilities: list, costs: list, eta: float, paths: list):
+    def update_probabilities(self, probabilities: list, loss_vector: list, eta: float, paths: list):
         P_new = [None] * len(paths)
         denominator = 0
         
         for b in range(len(paths)):
-                denominator += probabilities[b] * np.exp(-eta * np.inner(costs, paths[b]))
+                denominator += probabilities[b] * np.exp(-eta * np.inner(loss_vector, paths[b]))
 
         for a in range(len(paths)):
-            numerator = probabilities[a] * np.exp(-eta * np.inner(costs, paths[a]))
+            numerator = probabilities[a] * np.exp(-eta * np.inner(loss_vector, paths[a]))
             P_new[a] = numerator / denominator
         
         return P_new
@@ -76,43 +76,65 @@ class Algorithms:
                 action = i
         return action, min
 
-    def loss(self, costs: list, path: list):
-        return np.inner(costs, path)
+    def loss(self, cost: list, path: list):
+        return np.inner(cost, path)
+    
+    def cov_matrix(self, probabilities: list, actions: list):
+        cov_matrix = 0
+        for a in range(len(actions)):
+            square_matrix = np.outer(actions[a], actions[a])
+            cov_matrix += probabilities[a] * square_matrix
+        return cov_matrix
 
-    def exp2(self, eta: float, paths: list, rounds: int):
+    def estimate_loss(self, probabilities, actions):
+        return
+
+    def exp2(self, eta: float, paths: list, rounds: int, game='full'):
+        print("running exp2 algo (setting: " + game + ")...")
+
         # initialize probability vector
         probabilities = [1/len(paths)] * len(paths)
         losses = []
-        costs = []
+        loss_vectors = []
+        progress = -10
 
         # loop through the rounds
         for t in range(1, rounds+1):
+            if t % (rounds/10) == 0:
+                progress += 10
+                print('round progress: ' + str(progress) + '%')
 
             #print("\nround " + str(t) + " ↓")
             self.graph.update_edge_weights()                            # "adversary" generates new edge weights
 
-            print("probabilities =\t\t" + str(np.round(probabilities, 2)))
+            #print("probabilities =\t\t" + str(np.round(probabilities, 2)))
 
             # choose an action
             action = self.action(probabilities)                         # decision maker chooses action based on probability vector P_t
             #print("action =\t\t" + str(action))
 
-            # reveal costs
-            cost = self.graph.get_all_edge_weights()
-            costs.append(cost)                   # decision maker is "informed" of loss vector z_t
-            #print("costs =\t\t\t" + str(costs))
+            loss_vector = self.graph.get_all_edge_weights()
+            loss_vectors.append(loss_vector) 
 
-            # calculate and store loss
-            losses.append(self.loss(cost, paths[action]))
+            instantaneous_loss = self.loss(loss_vector, paths[action])
+            losses.append(instantaneous_loss)
+
+            # set cost
+            if game == 'bandit':
+                del loss_vector
+                pinv_cov_matrix = np.linalg.pinv(self.cov_matrix(probabilities, paths))
+                estimated_loss_vector = pinv_cov_matrix @ paths[action] * instantaneous_loss
+                loss_vector = estimated_loss_vector
 
             # calculate P_t+1
-            probabilities = self.update_probabilities(probabilities, cost, eta, paths)
+            probabilities = self.update_probabilities(probabilities, loss_vector, eta, paths)
 
         expected_loss = sum(losses) / len(losses)
-        best_action, total_loss_best_action = self.min_total_loss(costs, paths)
-        expected_loss_best_action = total_loss_best_action / len(costs)
+        best_action, total_loss_best_action = self.min_total_loss(loss_vectors, paths)
+        expected_loss_best_action = total_loss_best_action / len(loss_vectors)
 
-        print("\nfinal probabilities =\t\t\t\t" + str(np.round(probabilities, 2)))
+        print('exp2 algo finished...\n')
+        print("final probabilities =\t\t\t\t" + str(np.round(probabilities, 2)))
 
         print("best action (in hindsight) =\t\t\t" + str(best_action))
 
