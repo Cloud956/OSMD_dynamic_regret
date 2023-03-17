@@ -4,7 +4,7 @@ from Algorithms import *
 #np.random.seed(0)
 
 # generate a gridgraph where the weights for edges are pulled from the below defined distribution
-distribution = lambda: round(np.random.normal(5, 0.5), 1)     # select the distribution to be used
+distribution = lambda: round(np.random.normal(5, 1.0), 2)     # select the distribution to be used
 gg = GridGraph(3, 3, distribution)
 
 algs = Algorithms(gg) # initialize algorithms class for the generated graph
@@ -22,7 +22,7 @@ encoded_paths = algs.encode(paths)
 print("\nEncoded paths:\n" + str(encoded_paths) + "\n")
 
 # run the EXP(2) algorithm
-total_regret = algs.exp2(eta=0.01, paths=encoded_paths, rounds=10000)
+total_regret = algs.exp2(eta=0.01, paths=encoded_paths, rounds=100000)
 
 # Calculate and print the regret over all the rounds
 print("\ntotal regret =\t\t\t\t\t" + str(total_regret))

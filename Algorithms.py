@@ -66,13 +66,15 @@ class Algorithms:
 
     def min_total_loss(self, costs: list, paths: list):
         min = float('inf')
-        for path in paths:
+        action = -1
+        for i in range(len(paths)):
             total_loss = 0
             for cost in costs:
-                total_loss += self.loss(cost, path)
+                total_loss += self.loss(cost, paths[i])
             if total_loss < min:
                 min = total_loss
-        return min
+                action = i
+        return action, min
 
     def loss(self, costs: list, path: list):
         return np.inner(costs, path)
@@ -82,7 +84,6 @@ class Algorithms:
         probabilities = [1/len(paths)] * len(paths)
         losses = []
         costs = []
-        #regret = []
 
         # loop through the rounds
         for t in range(1, rounds+1):
@@ -104,15 +105,16 @@ class Algorithms:
             # calculate and store loss
             losses.append(self.loss(cost, paths[action]))
 
-            #minimum_loss = self.minimal_loss(costs[-1], paths)
-            #regret.append(actual_loss - minimum_loss)                   # change to calculate with the minimal decision over all the rounds
-            #print("regret =\t\t" + str(regret[-1]))
-
             # calculate P_t+1
             probabilities = self.update_probabilities(probabilities, cost, eta, paths)
 
         expected_loss = sum(losses) / len(losses)
-        expected_loss_best_action = self.min_total_loss(costs, paths) / len(costs)
+        best_action, total_loss_best_action = self.min_total_loss(costs, paths)
+        expected_loss_best_action = total_loss_best_action / len(costs)
+
+        print("\nfinal probabilities =\t\t\t\t" + str(np.round(probabilities, 2)))
+
+        print("best action (in hindsight) =\t\t\t" + str(best_action))
 
         print("\nexpected loss =\t\t\t\t\t" + str(expected_loss))
         print("expected loss for best action overall =\t\t" + str(expected_loss_best_action))
