@@ -22,7 +22,7 @@ encoded_paths = algs.encode(paths)
 print("\nEncoded paths:\n" + str(encoded_paths) + "\n")
 
 # run the EXP2 algorithm
-total_regret = algs.exp2(eta=0.01, paths=encoded_paths, rounds=100000, game='bandit')
+total_regret = algs.exp2(eta=0.01, paths=encoded_paths, rounds=100000, game='bandit') # set game = 'full' to usse exp2 with full information
 
 # Calculate and print the regret over all the rounds
 print("\ntotal regret =\t\t\t\t\t" + str(total_regret))
