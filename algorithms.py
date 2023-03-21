@@ -122,17 +122,15 @@ class Algos:
         b=2
 
     def run_bandit(self,loss,choice):
-        P=[]
+        P=0
         for i in range(len(self.bpath)):
             path=self.bpath[i]
             normal_path = np.array(path)
-            mult = np.dot(normal_path,normal_path)
-            P.append(mult*self.probabilities[i])
-        b=2
+            mult = np.outer(normal_path,normal_path)
+            P+= mult*self.probabilities[i]
         P_plus = np.linalg.pinv(P)
-        val = np.dot(choice,choice)
-        cost = P_plus*val*loss
-        b=2
+        cost = np.matmul(P_plus,choice) * loss
+        self.cost = cost
     def exp2_top(self,choice):
         learn_var = -1*self.learn
         top = exp(learn_var * np.dot(self.cost,choice))
