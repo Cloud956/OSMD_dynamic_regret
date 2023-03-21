@@ -125,8 +125,7 @@ class Algos:
         P=0
         for i in range(len(self.bpath)):
             path=self.bpath[i]
-            normal_path = np.array(path)
-            mult = np.outer(normal_path,normal_path)
+            mult = np.outer(path,path)
             P+= mult*self.probabilities[i]
         P_plus = np.linalg.pinv(P)
         cost = np.matmul(P_plus,choice) * loss
