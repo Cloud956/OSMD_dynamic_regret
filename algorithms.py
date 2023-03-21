@@ -117,6 +117,22 @@ class Algos:
         #print(probs)
         #print(sum(probs))
         self.probabilities = probs
+
+    def run_semi_bandit(self):
+        b=2
+
+    def run_bandit(self,loss,choice):
+        P=[]
+        for i in range(len(self.bpath)):
+            path=self.bpath[i]
+            normal_path = np.array(path)
+            mult = np.dot(normal_path,normal_path)
+            P.append(mult*self.probabilities[i])
+        b=2
+        P_plus = np.linalg.pinv(P)
+        val = np.dot(choice,choice)
+        cost = P_plus*val*loss
+        b=2
     def exp2_top(self,choice):
         learn_var = -1*self.learn
         top = exp(learn_var * np.dot(self.cost,choice))
