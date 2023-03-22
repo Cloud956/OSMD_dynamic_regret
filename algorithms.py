@@ -194,7 +194,7 @@ class Algos:
     def exp2_top(self,choice):
         """
         :param choice: Choice you made
-        :return: The nominator for the exp2 algorithm
+        :return: The numerator for the exp2 algorithm
         """
         learn_var = -1*self.learn
         top = exp(learn_var * np.dot(self.cost,choice))
