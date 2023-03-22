@@ -20,6 +20,11 @@ class Algos:
         self.bpath=None
         self.regenerate_cost()
     def points_to_index(self, p1, p2):
+        """
+        :param p1: Point from which the edge is coming out of
+        :param p2: Point into which the edge is coming    (p1 and p2 are connected by edge)
+        :return: The index number ( in the boolean array) of the edge from point p1 to point p2
+        """
         x1, y1 = p1.xy()
         x2, y2 = p2.xy()
         if x1 == x2:  # left-right
@@ -30,9 +35,20 @@ class Algos:
             return (self.h - 1) * (y1 - 1) + (xlow - 1) + (self.h * (self.l - 1))
 
     def is_valid_point(self, x, y):
+        """
+        :param x: x value of point
+        :param y: y value of point
+        :return: Whether the point is in the grid graph or not
+        """
         return 0 < x < (self.h + 1) and 0 < y < (self.l + 1)
 
     def point_can_reach(self, point, depth):
+        """
+        :param point: Point which we are currently examining
+        :param depth: The remaining amount of edges we can possibly use to reach the goal
+        :return:  Whether from the Point point it is possible to reach the goal point
+            Why? -> If it cannot reach goal, we can ignore this path and save computation for the bfs algorithm
+        """
         min_distance = self.goal.sum() - point.sum()
         remaining_moves = self.path_len - depth - 1
         rest = remaining_moves - min_distance
@@ -41,10 +57,17 @@ class Algos:
         return False
 
     def initialize_probabilities(self):
+        """
+        Initializes the probs for actions in A. All p(a) = 1/|A|
+        """
         number = len(self.paths)
         self.probabilities = [1/number]*number
 
     def make_a_choice(self):
+        """
+        Decides on a choice of an action a using all of the probabilities.
+        :return: Action a in boolean vertex form and the index of that action a in the list of actions A
+        """
         probs = self.probabilities
         roll = random.random()
         total=0
@@ -54,18 +77,35 @@ class Algos:
                 #print(f"ROLLED {roll} RETURNING {i}")
                 return self.bpath[i],i
     def get_loss(self,choice):
+        """
+        :param choice:  boolean vertex of chosen action
+        :return: loss incurred by selecting this action
+        """
         #print(choice)
        # print(self.cost)
         return np.dot(self.cost,np.transpose(choice))
     def min_loss(self):
+        """
+        :return: Minimal loss you could have incurred.
+        """
         nums=[]
         for p in self.bpath:
             nums.append(np.dot(self.cost,p))
         return min(nums)
-    def normal_regret(self,choice):
+    def dynamic_regret(self, choice):
+        """
+        :param choice: The action you have selected (boolean vector)
+        :return: Your dynamic regret at a given timestep ( function to be used before refreshing the loss vector)
+        """
         minimal = self.min_loss()
         return np.dot(self.cost,choice)-minimal
     def find_point_neighbours(self, point, depth):
+        """
+        :param point: Point currently being inspected
+        :param depth: Remaining amount of moves you can do
+        :return: All the neighbours of Point point, who lead to paths which do not reuse edges and can possibly
+                                                                                                reach the goal point
+        """
         neighbours = []
         x, y = point.xy()
         for a in range(x - 1, x + 2):
@@ -74,10 +114,17 @@ class Algos:
                     neighbours.append(Point(a, b))
         return [i for i in neighbours if self.point_can_reach(i, depth)]
     def init_paths(self):
+        """
+        Initializes the paths, runs the bfs algorithm.
+        """
         path = self.bfs_path()
         self.paths = path
         self.bpath = self.paths_to_boolean(path)
     def get_next_paths(self, path):
+        """
+        :param path: Path being inspected
+        :return: All the paths which can be reached by extending the starting path, which can reach the goal.
+        """
         children = []
         past = path.path
         last_point = path.end
@@ -91,6 +138,9 @@ class Algos:
         return children
 
     def regenerate_cost(self):
+        """
+        Draws a new loss vector
+        """
         nums = []
         for i in range(self.edges_max):
             nums.append(random.random())
@@ -99,6 +149,9 @@ class Algos:
         self.cost = nums
 
     def bfs_path(self):
+        """
+        Runs the bfs algorithm to find all paths from start to goal
+        """
         current_wave = [Path([], self.start)]
         for i in range(self.path_len):
             next_wave = []
@@ -108,6 +161,9 @@ class Algos:
             current_wave = next_wave
         return [i for i in current_wave if i.end == self.goal]
     def exp2_main(self):
+        """
+        Updates probabilities according to the exp2 algorithm
+        """
         probs = []
         bot = self.exp2_bot()
         for i in range(len(self.bpath)):
@@ -122,6 +178,11 @@ class Algos:
         b=2
 
     def run_bandit(self,loss,choice):
+        """
+        :param loss: loss incurred
+        :param choice: choice you made that turn
+        :return: Nothing, updates the loss vector by the estimation according to a bandit game setting
+        """
         P=0
         for i in range(len(self.bpath)):
             path=self.bpath[i]
@@ -131,10 +192,17 @@ class Algos:
         cost = np.matmul(P_plus,choice) * loss
         self.cost = cost
     def exp2_top(self,choice):
+        """
+        :param choice: Choice you made
+        :return: The nominator for the exp2 algorithm
+        """
         learn_var = -1*self.learn
         top = exp(learn_var * np.dot(self.cost,choice))
         return top
     def exp2_bot(self):
+        """
+        :return: The denominator for the exp2 algorithm, can be used once as it's shared for all the exp2 calculations
+        """
         learn_var = -1 * self.learn
         bot = 0
         zT = np.array(self.cost).transpose()
@@ -144,6 +212,10 @@ class Algos:
             bot += addition
         return bot
     def paths_to_boolean(self, paths):
+        """
+        :param paths: List of Path objects
+        :return:  List of boolean vectors, which encode the Path objects
+        """
         b_paths = []
         for p in paths:
             path = p.path

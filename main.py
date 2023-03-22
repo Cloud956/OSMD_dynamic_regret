@@ -3,6 +3,7 @@ from point import Point
 from algorithms import Algos
 import matplotlib.pyplot as plt
 def do_setup():
+    print("Enter s to skip a bit of a setup or press ENTER to move forward")
     cheat = input()
     if cheat == "s":
         height,length,sx,sy,gx,gy,path_len,learning_rate,cost_bound = 3,3,1,1,3,3,6,0.1,3
@@ -52,10 +53,18 @@ def do_rounds(algo,turns,mode):
             algo.run_semi_bandit()
         elif mode ==3:
             algo.run_bandit(loss,choice)
-        regret = algo.normal_regret(choice)
+        regret = algo.dynamic_regret(choice)
         regrets.append(regret)
         algo.exp2_main()
    # b=2
+    over_time_val=[]
+    sum_val=0
+    for i in range(len(regrets)):
+        sum_val+=regrets[i]
+        over_time_val.append(sum_val/i)
+    plt.plot(over_time_val)
+    plt.title("Regrets / T over time")
+    plt.show()
     plt.plot(regrets)
     plt.title('Regret over time')
     plt.show()
