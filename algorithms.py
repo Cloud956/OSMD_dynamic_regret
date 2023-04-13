@@ -19,6 +19,7 @@ class Algos:
         self.learn = learning_rate
         self.bpath=None
         self.regenerate_cost()
+        self.semi_bandit_dict=None
     def points_to_index(self, p1, p2):
         """
         :param p1: Point from which the edge is coming out of
@@ -175,7 +176,22 @@ class Algos:
         self.probabilities = probs
 
     def run_semi_bandit(self):
-        b=2
+        pass
+
+    def semi_bandit_check(self):
+        for k,v in self.semi_bandit_dict.items():
+            print(f"{k} : {len(v)}")
+        for p in self.bpath:
+            print(p)
+    def precompute_semi_bandit(self):
+        mapper = dict()
+        for i in range(self.edges_max):
+            mapper[i] = list()
+        for p in self.bpath:
+            for i in range(self.edges_max):
+                if p[i] == 1:
+                    mapper[i].append(p)
+        self.semi_bandit_dict = mapper
 
     def run_bandit(self,loss,choice):
         """
@@ -211,6 +227,8 @@ class Algos:
             addition = exp(learn_var * np.dot(bT, zT)) * self.probabilities[i]
             bot += addition
         return bot
+
+
     def paths_to_boolean(self, paths):
         """
         :param paths: List of Path objects

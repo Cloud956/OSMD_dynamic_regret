@@ -71,8 +71,5 @@ def do_rounds(algo,turns,mode):
     #print(loss)
 if __name__ == '__main__':
     algo,gamemode = do_setup()
-    print("Enter T")
-    T=eval(input())
-    do_rounds(algo,T,gamemode)
-    print("Final probabilities are:")
-    print(algo.probabilities)
+    algo.precompute_semi_bandit()
+    algo.semi_bandit_check()
