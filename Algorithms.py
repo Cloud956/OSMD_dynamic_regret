@@ -67,7 +67,7 @@ class Algorithms:
         '''
         updates the probability vector p_t based on the (estimated) loss vector
         '''
-        P_new = [None] * len(actions)
+        prob_vector_new = [None] * len(actions)
         denominator = 0
         
         for b in range(len(actions)):
@@ -75,15 +75,16 @@ class Algorithms:
 
         for a in range(len(actions)):
             numerator = prob_vector[a] * np.exp(-eta * np.inner(loss_vector, actions[a]))
-            P_new[a] = numerator / denominator
+            prob_vector_new[a] = numerator / denominator
         
-        return P_new
+        return prob_vector_new
 
     def min_total_loss(self, loss_vectors: list, actions: list):
         '''
         provided with a list of loss vectors for all rounds, returns the action that would
-        have given minimall loss together with that action
+        have given minimall loss together its loss value
         '''
+        # TODO: improve efficiency (maintain total regrets per action and update each round)
         min = float('inf')
         action = -1
         for i in range(len(actions)):
@@ -94,6 +95,17 @@ class Algorithms:
                 min = total_loss
                 action = i
         return action, min
+
+    def total_loss_vector(self, total_loss_vector: list, loss_vector: list, actions: list):
+        '''
+        provided with the loss vector for a round and the latest total loss vector, updates 
+        the totall loss value for each action and returns this
+        '''
+        for i in range(len(actions)):
+            total_loss_vector[i] += self.loss(loss_vector, actions[i])
+
+        return total_loss_vector
+
 
     def loss(self, loss_vector: list, path: list):
         '''
@@ -130,9 +142,12 @@ class Algorithms:
 
         # initialize probability vector
         prob_vector = [1/len(actions)] * len(actions)
-        losses = []
-        loss_vectors = []
+        losses_sum = 0
         progress = 0
+        total_loss_vectors = [[0] * len(actions)]
+        expected_losses = []
+        expected_losses_best_action = []
+        total_regrets = []
 
         # loop through the rounds
         for t in range(1, rounds+1):
@@ -146,10 +161,9 @@ class Algorithms:
             action = self.action(prob_vector)                         # decision maker chooses action based on probability vector P_t
 
             loss_vector = self.graph.get_all_edge_weights()
-            loss_vectors.append(loss_vector) 
 
             instantaneous_loss = self.loss(loss_vector, actions[action])
-            losses.append(instantaneous_loss)
+            losses_sum += instantaneous_loss
 
             # if bandit game, reset the loss vector to an estimated version based on the instantaneous loss
             if game == 'bandit':
@@ -160,22 +174,29 @@ class Algorithms:
                 print("prob_vector =\t\t" + str(np.round(prob_vector, 2)))
                 print("action =\t\t" + str(action))
 
+            total_loss_vectors.append(self.total_loss_vector(total_loss_vectors[-1], loss_vector, actions))
+            expected_losses.append(losses_sum / t)
+            total_loss_best_action = min(total_loss_vectors[-1])
+            expected_losses_best_action.append(total_loss_best_action / t)
+            total_regrets.append(expected_losses[-1] - expected_losses_best_action[-1])
+
             # calculate P_t+1
             prob_vector = self.update_prob_vector(prob_vector, loss_vector, eta, actions)
 
         print("\ncalculating total regret...")
 
-        expected_loss = sum(losses) / len(losses)
-        best_action, total_loss_best_action = self.min_total_loss(loss_vectors, actions)
-        expected_loss_best_action = total_loss_best_action / len(loss_vectors)
+        expected_loss = expected_losses[-1]
+        expected_loss_best_action = expected_losses_best_action[-1]
         
         print("\nfinal prob_vector =\t\t\t\t" + str(np.round(prob_vector, 2)))
 
-        print("best action (in hindsight) =\t\t\t" + str(best_action))
+        #print("best action (in hindsight) =\t\t\t" + str(best_action))
 
         print("\nexpected loss =\t\t\t\t\t" + str(expected_loss))
         print("expected loss for best action overall =\t\t" + str(expected_loss_best_action))
 
-        total_regret = expected_loss - expected_loss_best_action
+        total_regret = total_regrets[-1]
 
-        return total_regret
+        print("\ntotal regret =\t\t\t\t\t" + str(total_regret))
+
+        return total_regrets
