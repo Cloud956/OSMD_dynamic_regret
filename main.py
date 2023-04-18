@@ -45,18 +45,24 @@ def do_setup():
 
 def do_rounds(algo,turns,mode):
     regrets = []
+    if mode == 2:
+        algo.precompute_semi_bandit()
     for i in range(turns):
         algo.regenerate_cost()
         choice,index = algo.make_a_choice()
         loss = algo.get_loss(choice)
+
         if mode == 2:
-            algo.run_semi_bandit()
+            algo.run_semi_bandit(choice)
         elif mode ==3:
             algo.run_bandit(loss,choice)
+
         regret = algo.dynamic_regret(choice)
+        if regret > 20:
+            b = 2
         regrets.append(regret)
         algo.exp2_main()
-   # b=2
+
     over_time_val=[]
     sum_val=0
     for i in range(len(regrets)):
@@ -68,8 +74,11 @@ def do_rounds(algo,turns,mode):
     plt.plot(regrets)
     plt.title('Regret over time')
     plt.show()
-    #print(loss)
+
 if __name__ == '__main__':
     algo,gamemode = do_setup()
-    algo.precompute_semi_bandit()
-    algo.semi_bandit_check()
+    print("Enter T")
+    T = eval(input())
+    do_rounds(algo, T, gamemode)
+    print("Final probabilities are:")
+    print(algo.probabilities)

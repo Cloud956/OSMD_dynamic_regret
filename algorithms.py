@@ -175,8 +175,21 @@ class Algos:
         #print(sum(probs))
         self.probabilities = probs
 
-    def run_semi_bandit(self):
-        pass
+    def run_semi_bandit(self,choice):
+        coordinates = [a*b for a,b in zip(self.cost,choice)]
+        end_cost = []
+        for i in range(self.edges_max):
+            val = coordinates[i]
+            if val == 0:
+                end_cost.append(0)
+            else:
+                containing = self.semi_bandit_dict.get(i)
+                summer=0
+                for a in containing:
+                    summer+=self.probabilities[a]
+                end_cost.append((val/summer)*choice[i])
+        self.cost = end_cost
+
 
     def semi_bandit_check(self):
         for k,v in self.semi_bandit_dict.items():
@@ -187,10 +200,11 @@ class Algos:
         mapper = dict()
         for i in range(self.edges_max):
             mapper[i] = list()
-        for p in self.bpath:
+        for j in range(len(self.bpath)):
+            p = self.bpath[j]
             for i in range(self.edges_max):
                 if p[i] == 1:
-                    mapper[i].append(p)
+                    mapper[i].append(j)
         self.semi_bandit_dict = mapper
 
     def run_bandit(self,loss,choice):
