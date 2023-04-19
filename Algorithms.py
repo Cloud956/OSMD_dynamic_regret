@@ -3,7 +3,7 @@ import numpy as np
 
 class Algorithms:
 
-    def __init__(self, graph: None):
+    def __init__(self, graph: Graph):
         self.graph = graph
 
     def bfs_paths(self, s, t, m):
@@ -124,13 +124,48 @@ class Algorithms:
             cov_matrix += prob_vector[a] * square_matrix
         return cov_matrix
 
-    def estimate_loss_vector(self, prob_vector: list, actions: list, action: int, instantaneous_loss: list):
+    def estimate_loss_vector(self, prob_vector: list, actions: list, action: int, instantaneous_loss: int):
         '''
         computes and resturns an estimate loss vector based on a probability vector, a list of actions,
         the index of the chosen action, and the instantaneous loss
         '''
         pinv_cov_matrix = np.linalg.pinv(self.cov_matrix(prob_vector, actions))
         estimated_loss_vector = pinv_cov_matrix @ actions[action] * instantaneous_loss
+        return estimated_loss_vector
+    
+    def actions_with_edge(self, actions: list):
+        actions_edges_dict = {}
+        for i in range(len(actions[-1])):
+            actions_with_edge = []
+            for j in range(len(actions)):
+                if actions[j][i] == 1:
+                    actions_with_edge.append(j)
+            actions_edges_dict[i] = actions_with_edge
+        return actions_edges_dict
+
+    def loss_values_semi(self, action: list, loss_vector: list):
+        semi_losses = [0] * len(action)
+        for i in action:
+            if action[i] == 1:
+                semi_losses[i] = loss_vector[i]
+        return semi_losses
+
+    def estimate_loss_vector_semi(self, prob_vector: list, actions: list, action: int, semi_losses: int, actions_edges_dict: dict):
+        '''
+        computes and resturns an estimate loss vector based on a probability vector, a list of actions,
+        the index of the chosen action, and the instantaneous loss
+        '''
+        estimated_loss_vector = [0] * self.graph.num_edges()
+        action = actions[action]
+        for i in range(len(action)):
+            if action[i] == 1:
+                actions_with_edge = actions_edges_dict[i]
+                prob_sum = 0
+                for action_with_edge in actions_with_edge:
+                    prob_sum += prob_vector[action_with_edge]
+                z_estimate = (semi_losses[i] / prob_sum)
+                estimated_loss_vector[i] = z_estimate
+        
         return estimated_loss_vector
 
     def exp2(self, eta: float, actions: list, rounds: int, game='full', debug=False):
@@ -148,6 +183,10 @@ class Algorithms:
         expected_losses = []
         expected_losses_best_action = []
         total_regrets = []
+        actions_edges_dict = None
+
+        if game == 'semi':
+            actions_edges_dict = self.actions_with_edge(actions)
 
         # loop through the rounds
         for t in range(1, rounds+1):
@@ -160,25 +199,30 @@ class Algorithms:
             # choose an action
             action = self.action(prob_vector)                         # decision maker chooses action based on probability vector P_t
 
-            loss_vector = self.graph.get_all_edge_weights()
+            loss_vector_full = self.graph.get_all_edge_weights()
 
-            instantaneous_loss = self.loss(loss_vector, actions[action])
+            instantaneous_loss = self.loss(loss_vector_full, actions[action])
             losses_sum += instantaneous_loss
 
             # if bandit game, reset the loss vector to an estimated version based on the instantaneous loss
             if game == 'bandit':
                 loss_vector = self.estimate_loss_vector(prob_vector, actions, action, instantaneous_loss)
+            elif game == 'semi':
+                semi_losses = self.loss_values_semi(actions[action], loss_vector_full)
+                loss_vector = self.estimate_loss_vector_semi(prob_vector, actions, action, semi_losses, actions_edges_dict)
+            else:
+                loss_vector = loss_vector_full
 
             if debug:
                 print("\nround " + str(t) + " ↓")
                 print("prob_vector =\t\t" + str(np.round(prob_vector, 2)))
                 print("action =\t\t" + str(action))
 
-            total_loss_vectors.append(self.total_loss_vector(total_loss_vectors[-1], loss_vector, actions))
+            total_loss_vectors.append(self.total_loss_vector(total_loss_vectors[-1], loss_vector_full, actions))
             expected_losses.append(losses_sum / t)
-            total_loss_best_action = min(total_loss_vectors[-1])
-            expected_losses_best_action.append(total_loss_best_action / t)
-            total_regrets.append(expected_losses[-1] - expected_losses_best_action[-1])
+            expected_loss_best_action = (min(total_loss_vectors[-1]) / t)
+            #expected_losses_best_action.append(total_loss_best_action / t)
+            total_regrets.append(expected_losses[-1] - expected_loss_best_action)
 
             # calculate P_t+1
             prob_vector = self.update_prob_vector(prob_vector, loss_vector, eta, actions)
@@ -186,11 +230,12 @@ class Algorithms:
         print("\ncalculating total regret...")
 
         expected_loss = expected_losses[-1]
-        expected_loss_best_action = expected_losses_best_action[-1]
+        expected_loss_best_action = expected_loss_best_action
         
         print("\nfinal prob_vector =\t\t\t\t" + str(np.round(prob_vector, 2)))
+        best_action = total_loss_vectors[-1].index(min(total_loss_vectors[-1]))
 
-        #print("best action (in hindsight) =\t\t\t" + str(best_action))
+        print("best action (in hindsight) =\t\t\t" + str(best_action))
 
         print("\nexpected loss =\t\t\t\t\t" + str(expected_loss))
         print("expected loss for best action overall =\t\t" + str(expected_loss_best_action))

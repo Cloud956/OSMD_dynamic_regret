@@ -2,7 +2,7 @@ from Graphs import *
 from Algorithms import *
 import matplotlib.pyplot as plt
 
-np.random.seed(0)
+np.random.seed(100)
 
 # generate a gridgraph where the weights for edges are pulled from the below defined distribution
 distribution = lambda: round(np.random.normal(100, 50), 0)     # select the distribution to be used
@@ -23,7 +23,7 @@ encoded_paths = algs.encode(paths)
 print("\nEncoded paths:\n" + str(encoded_paths) + "\n")
 
 # run the EXP2 algorithm
-total_regrets = algs.exp2(eta=0.01, actions=encoded_paths, rounds=100000, game='full', debug=False) # set game = 'full' to usse exp2 with full information
+total_regrets = algs.exp2(eta=0.01, actions=encoded_paths, rounds=100, game='semi', debug=False) # set game = 'full' to usse exp2 with full information
 
 # plot total regret over time
 indices = range(len(total_regrets))
