@@ -25,6 +25,7 @@ class Algos:
         self.bpath=None
         self.regenerate_cost()
         self.semi_bandit_dict=None
+        self.osmd_x=None
     def points_to_index(self, p1, p2):
         """
         :param p1: Point from which the edge is coming out of
@@ -272,7 +273,7 @@ class Algos:
             x = np.dot(A, w)
             y = []
             for xi in x:
-                y.append(xi * log(xi))
+                y.append(xi * log(xi)-xi)
             return sum(y)
 
         const = ({'type': 'eq', 'fun': lambda w: sum(w) - 1})
@@ -282,13 +283,49 @@ class Algos:
         result = spo.minimize(f, w_start, options={'disp': True}, constraints=const, bounds=bounds)
         if result.success:
             print("worked")
-            print(result.x)
-            print(np.dot(A, result.x))
+            print("w vector ", result.x)
+            print("x vector ", np.dot(A, result.x))
 
         x = np.dot(A, result.x)
+        self.osmd_x = x
+
+
+
+    def osmd_middle_guy(self,loss):
+        new_w = self.osmd_x * exp(-1 * self.learn * loss)
+        return new_w
+    def set_osmd_pt(self):
+        A = np.transpose(self.bpath)
         A_inv = np.linalg.pinv(A)
-        pt = np.dot(A_inv, x)
-        #pt = [round(i, 2) for i in pt]
-        print(pt)
-        print(sum(pt))
+        pt = np.dot(A_inv, self.osmd_x)
         self.probabilities = pt
+    def osmd_big_guy(self,new_w):
+
+        A = self.bpath
+        a=A
+        A = np.transpose(A)
+        wt = new_w
+
+        def f(input_w):
+            x = np.dot(A, input_w)
+            res = 0
+            for i in range(len(x)):
+                xi = x[i]
+                yi = wt[i]
+                res += yi - xi
+                if xi==0:
+                    continue
+                res += xi * log(xi / yi)
+
+            return res
+
+        const = ({'type': 'eq', 'fun': lambda w: sum(w) - 1})
+        bounds = Bounds(lb=0, keep_feasible=True)
+        initial_guess = [1 / len(a)] * len(a)
+        w_start = np.array(initial_guess)
+        result = spo.minimize(f, w_start, options={'disp': True}, constraints=const, bounds=bounds)
+        if result.success:
+            print("worked")
+            print("w vector ", result.x)
+            print("x vector ", np.dot(A, result.x))
+        self.osmd_x = np.dot(A,result.x)

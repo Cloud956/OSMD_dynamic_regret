@@ -2,6 +2,7 @@ import sys
 from point import Point
 from algorithms import Algos
 import matplotlib.pyplot as plt
+from math import exp
 def do_setup():
     print("Enter s to skip a bit of a setup or press ENTER to move forward")
     cheat = input()
@@ -74,15 +75,49 @@ def do_rounds(algo,turns,mode):
     plt.plot(regrets)
     plt.title('Regret over time')
     plt.show()
+def do_rounds_osmd(algo,turns,mode):
+    regrets = []
+    if mode == 2:
+        algo.precompute_semi_bandit()
+    for i in range(turns):
+        algo.regenerate_cost()
+        algo.set_osmd_pt()
+        choice,index = algo.make_a_choice()
+        loss = algo.get_loss(choice)
+        if mode == 2:
+            algo.run_semi_bandit(choice)
+        elif mode ==3:
+            algo.run_bandit(loss,choice)
+        new_w = algo.osmd_middle_guy(loss)
+        algo.osmd_big_guy(new_w)
+        regret = algo.dynamic_regret(choice)
+        if regret > 20:
+            b = 2
+        regrets.append(regret)
+        algo.exp2_main()
+
+    over_time_val=[]
+    sum_val=0
+    for i in range(len(regrets)):
+        sum_val+=regrets[i]
+        over_time_val.append(sum_val/i)
+    plt.plot(over_time_val)
+    plt.title("Regrets / T over time")
+    plt.show()
+    plt.plot(regrets)
+    plt.title('Regret over time')
+    plt.show()
+
+
 
 if __name__ == '__main__':
     algo,gamemode = do_setup()
+    algo.osmd_pre()
     print("Enter T")
     T = eval(input())
-    #do_rounds(algo, T, gamemode)
+    do_rounds_osmd(algo, T, gamemode)
     print("Final probabilities are:")
     print(algo.probabilities)
-    algo.osmd_pre()
-    a,b = algo.make_a_choice()
-    print(a)
-    print(b)
+
+
+
