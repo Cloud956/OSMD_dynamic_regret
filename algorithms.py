@@ -2,12 +2,12 @@ from point import Point, Path, Edge
 from copy import deepcopy
 import numpy as np
 import random
-from math import exp
+from numpy import exp
 from math import log
 import numpy as np
 from scipy.optimize import Bounds
 import scipy.optimize as spo
-
+import sys
 
 class Algos:
     def __init__(self, height, length, path_len, start, goal, cost_bound,learning_rate):
@@ -81,7 +81,8 @@ class Algos:
         for i in range(len(probs)):
             total += probs[i]
             if roll <= total:
-                #print(f"ROLLED {roll} RETURNING {i}")
+                print(f"ROLLED {roll} RETURNING {i}")
+                print(self.probabilities)
                 return self.bpath[i],i
     def get_loss(self,choice):
         """
@@ -193,13 +194,20 @@ class Algos:
                 summer=0
                 for a in containing:
                     summer+=self.probabilities[a]
-                end_cost.append((val/summer)*choice[i])
+                new_value = (val/summer)*choice[i]
+                if new_value>100:
+                    print('VAL: ', val)
+                    print('SUM OF PROBS: ',summer)
+                    print("I WAS INSPECTING EDGE NUM :", i)
+                    self.semi_bandit_check()
+                    sys.exit(2)
+                end_cost.append(new_value)
         self.cost = end_cost
 
 
     def semi_bandit_check(self):
         for k,v in self.semi_bandit_dict.items():
-            print(f"{k} : {len(v)}")
+            print(f"{k} : {(v)}")
         for p in self.bpath:
             print(p)
     def precompute_semi_bandit(self):
@@ -291,8 +299,9 @@ class Algos:
 
 
 
-    def osmd_middle_guy(self,loss):
-        new_w = self.osmd_x * exp(-1 * self.learn * loss)
+    def osmd_middle_guy(self):
+        top=-1*self.learn*np.array(self.cost)
+        new_w = self.osmd_x * exp(top)
         return new_w
     def set_osmd_pt(self):
         A = np.transpose(self.bpath)
@@ -313,9 +322,12 @@ class Algos:
                 xi = x[i]
                 yi = wt[i]
                 res += yi - xi
-                if xi==0:
+                if xi==0 or yi==0:
                     continue
-                res += xi * log(xi / yi)
+                try:
+                    res += xi * log(xi / yi)
+                except:
+                    b=2
 
             return res
 

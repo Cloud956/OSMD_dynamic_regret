@@ -83,18 +83,18 @@ def do_rounds_osmd(algo,turns,mode):
         algo.regenerate_cost()
         algo.set_osmd_pt()
         choice,index = algo.make_a_choice()
-        loss = algo.get_loss(choice)
         if mode == 2:
             algo.run_semi_bandit(choice)
         elif mode ==3:
+            loss = algo.get_loss(choice)
             algo.run_bandit(loss,choice)
-        new_w = algo.osmd_middle_guy(loss)
+        new_w = algo.osmd_middle_guy()
         algo.osmd_big_guy(new_w)
         regret = algo.dynamic_regret(choice)
-        if regret > 20:
-            b = 2
+        if regret > 5000:
+            b=2
         regrets.append(regret)
-        algo.exp2_main()
+
 
     over_time_val=[]
     sum_val=0
