@@ -2,12 +2,12 @@ import sys
 from point import Point
 from algorithms import Algos
 import matplotlib.pyplot as plt
-from math import exp
+from tqdm import tqdm
 def do_setup():
     print("Enter s to skip a bit of a setup or press ENTER to move forward")
     cheat = input()
     if cheat == "s":
-        height,length,sx,sy,gx,gy,path_len,learning_rate,cost_bound = 3,3,1,1,3,3,6,0.1,3
+        height,length,sx,sy,gx,gy,path_len,learning_rate,cost_bound = 4,4,1,1,3,4,7,0.1,2
     else:
         print("Input the desired size of the matrix (Height,Length)")
         height,length = eval(input())
@@ -48,7 +48,7 @@ def do_rounds(algo,turns,mode):
     regrets = []
     if mode == 2:
         algo.precompute_semi_bandit()
-    for i in range(turns):
+    for i in tqdm(range(turns)):
         algo.regenerate_cost()
         choice,index = algo.make_a_choice()
         loss = algo.get_loss(choice)
@@ -77,24 +77,24 @@ def do_rounds(algo,turns,mode):
     plt.show()
 def do_rounds_osmd(algo,turns,mode):
     regrets = []
+    algo.osmd_pre()
     if mode == 2:
         algo.precompute_semi_bandit()
-    for i in range(turns):
+    for i in tqdm(range(turns)):
         algo.regenerate_cost()
         algo.set_osmd_pt()
         choice,index = algo.make_a_choice()
+
+        regret = algo.dynamic_regret(choice)
+        regrets.append(regret)
+
         if mode == 2:
             algo.run_semi_bandit(choice)
         elif mode ==3:
             loss = algo.get_loss(choice)
             algo.run_bandit(loss,choice)
-        new_w = algo.osmd_middle_guy()
-        algo.osmd_big_guy(new_w)
-        regret = algo.dynamic_regret(choice)
-        if regret > 5000:
-            b=2
-        regrets.append(regret)
 
+        algo.run_osmd()
 
     over_time_val=[]
     sum_val=0
@@ -112,10 +112,20 @@ def do_rounds_osmd(algo,turns,mode):
 
 if __name__ == '__main__':
     algo,gamemode = do_setup()
-    algo.osmd_pre()
+    print("Select the algorithm! \n"
+          "1 --> EXP2 \n"
+          "2 --> OSMD \n")
+    algorithm_choice = eval(input())
+
     print("Enter T")
     T = eval(input())
-    do_rounds_osmd(algo, T, gamemode)
+    if algorithm_choice == 1:
+        do_rounds(algo, T, gamemode)
+    elif algorithm_choice == 2:
+        do_rounds_osmd(algo,T,gamemode)
+    else:
+        print("INCORRECT INPUT")
+        sys.exit(2)
     print("Final probabilities are:")
     print(algo.probabilities)
 

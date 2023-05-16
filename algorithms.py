@@ -1,13 +1,11 @@
 from point import Point, Path, Edge
 from copy import deepcopy
-import numpy as np
 import random
 from numpy import exp
 from math import log
 import numpy as np
 from scipy.optimize import Bounds
 import scipy.optimize as spo
-import sys
 
 class Algos:
     def __init__(self, height, length, path_len, start, goal, cost_bound,learning_rate):
@@ -81,8 +79,8 @@ class Algos:
         for i in range(len(probs)):
             total += probs[i]
             if roll <= total:
-                print(f"ROLLED {roll} RETURNING {i}")
-                print(self.probabilities)
+               # print(f"ROLLED {roll} RETURNING {i}")
+                #print(self.probabilities)
                 return self.bpath[i],i
     def get_loss(self,choice):
         """
@@ -195,12 +193,6 @@ class Algos:
                 for a in containing:
                     summer+=self.probabilities[a]
                 new_value = (val/summer)*choice[i]
-                if new_value>100:
-                    print('VAL: ', val)
-                    print('SUM OF PROBS: ',summer)
-                    print("I WAS INSPECTING EDGE NUM :", i)
-                    self.semi_bandit_check()
-                    sys.exit(2)
                 end_cost.append(new_value)
         self.cost = end_cost
 
@@ -271,8 +263,18 @@ class Algos:
                 curr[index] = 1
             b_paths.append(curr)
         return b_paths
-
+    def run_osmd(self):
+        """
+        Runs the steps d and e of the OSMD algorithm, updating the x variable ( xt -> xt+1)
+        :return: nothing
+        """
+        w_t = self.osmd_middle_guy()
+        self.osmd_big_guy(w_t)
     def osmd_pre(self):
+        """
+            Sets up the OSMD, selecting an initial x variable
+        :return: nothing
+        """
         a = self.bpath
         A = a
         A = np.transpose(A)
@@ -281,35 +283,44 @@ class Algos:
             x = np.dot(A, w)
             y = []
             for xi in x:
-                y.append(xi * log(xi)-xi)
+                if xi!=0:
+                    y.append(xi * log(xi)-xi)
             return sum(y)
 
         const = ({'type': 'eq', 'fun': lambda w: sum(w) - 1})
         bounds = Bounds(lb=0, keep_feasible=True)
         initial_guess = [1 / len(a)] * len(a)
         w_start = np.array(initial_guess)
-        result = spo.minimize(f, w_start, options={'disp': True}, constraints=const, bounds=bounds)
-        if result.success:
-            print("worked")
-            print("w vector ", result.x)
-            print("x vector ", np.dot(A, result.x))
+        result = spo.minimize(f, w_start, options={'disp': False}, constraints=const, bounds=bounds)
 
         x = np.dot(A, result.x)
         self.osmd_x = x
 
-
-
     def osmd_middle_guy(self):
+        """
+         Runs the step d of the OSMD algorithm, calculating the new w(t+1)
+        :return: w(t+1)
+        """
         top=-1*self.learn*np.array(self.cost)
         new_w = self.osmd_x * exp(top)
         return new_w
+
     def set_osmd_pt(self):
+        """
+            Calculates the probability distribution based on the xt variable. Uses the pseudoinverse, which might cause slight issues ( negative probabilities)
+        :return: nothing
+        """
         A = np.transpose(self.bpath)
         A_inv = np.linalg.pinv(A)
         pt = np.dot(A_inv, self.osmd_x)
         self.probabilities = pt
-    def osmd_big_guy(self,new_w):
 
+    def osmd_big_guy(self,new_w):
+        """
+            Runs the final step of the OSMD algorithm loop, calculating the new x(t+1) -> x  Ignores calculations with 0's and infinities.
+        :param new_w: w(t+1)
+        :return: nothing
+        """
         A = self.bpath
         a=A
         A = np.transpose(A)
@@ -321,13 +332,14 @@ class Algos:
             for i in range(len(x)):
                 xi = x[i]
                 yi = wt[i]
-                res += yi - xi
-                if xi==0 or yi==0:
-                    continue
+                try:
+                    res += yi - xi
+                except:
+                    pass
                 try:
                     res += xi * log(xi / yi)
                 except:
-                    b=2
+                    pass
 
             return res
 
@@ -335,9 +347,6 @@ class Algos:
         bounds = Bounds(lb=0, keep_feasible=True)
         initial_guess = [1 / len(a)] * len(a)
         w_start = np.array(initial_guess)
-        result = spo.minimize(f, w_start, options={'disp': True}, constraints=const, bounds=bounds)
-        if result.success:
-            print("worked")
-            print("w vector ", result.x)
-            print("x vector ", np.dot(A, result.x))
+        result = spo.minimize(f, w_start, options={'disp': False}, constraints=const, bounds=bounds)
+
         self.osmd_x = np.dot(A,result.x)
