@@ -1,5 +1,8 @@
 from Graphs import *
 import numpy as np
+import scipy.optimize as spo
+from scipy.optimize import Bounds
+from math import log
 
 class Algorithms:
 
@@ -167,13 +170,70 @@ class Algorithms:
                 estimated_loss_vector[i] = z_estimate
         
         return estimated_loss_vector
+    
+    def osmd_init_x(self, actions):
+        A = actions
+        A = np.transpose(A)
 
-    def exp2(self, eta: float, actions: list, rounds: int, game='full', debug=False):
+        def f(w):
+            x = np.dot(A, w)
+            y = 0
+            for xi in x:
+                y += -xi
+                if xi != 0:
+                    y += xi * log(xi)
+            return y
+
+        const = ({'type': 'eq', 'fun': lambda w: sum(w) - 1})
+        bounds = Bounds(lb=0, keep_feasible=True)
+        w = [1 / len(actions)] * len(actions)
+
+        result = spo.minimize(f, w, options={'disp': False}, constraints=const, bounds=bounds)
+        x = np.dot(A, result.x)
+
+        return x
+    
+    def osmd_middle_guy(self, x, eta, loss):
+        new_w = x * np.exp(-1 * eta * np.array(loss))
+        return new_w
+    
+    def set_osmd_pt(self, x, actions):
+        A = np.transpose(actions)
+        A_inv = np.linalg.pinv(A)
+        pt = np.dot(A_inv, x)
+        return pt
+
+    def osmd_big_guy(self, actions, new_w):
+
+        A = actions
+        A = np.transpose(A)
+        wt = new_w
+
+        def f(input_w):
+            x = np.dot(A, input_w)
+            res = 0
+            for i in range(len(x)):
+                xi = x[i]
+                yi = wt[i]
+                res += yi - xi
+                if xi!=0 and yi != 0 and yi != np.inf:
+                    res += xi * log(xi / yi)
+
+            return res
+
+        const = ({'type': 'eq', 'fun': lambda w: sum(w) - 1})
+        bounds = Bounds(lb=0, keep_feasible=True)
+        initial_guess = [1 / len(actions)] * len(actions)
+        w_start = np.array(initial_guess)
+        result = spo.minimize(f, w_start, options={'disp': False}, constraints=const, bounds=bounds)
+        return np.dot(A,result.x)
+
+    def exp2(self, eta: float, actions: list, rounds: int, game='full', debug=False, prints=False):
         '''
         execute the exp2 algorithm and return the total regret, more information is printed into
         the terminal during execution
         '''
-        print("running exp2 algo (setting: " + game + ")...")
+        if prints: print("running exp2 algo (setting: " + game + ")...")
 
         # initialize probability vector
         prob_vector = [1/len(actions)] * len(actions)
@@ -192,7 +252,7 @@ class Algorithms:
         for t in range(1, rounds+1):
             if t % (rounds/10) == 0:
                 progress += 10
-                print('round progress: ' + str(progress) + '%')
+                if prints: print('round progress: ' + str(progress) + '%')
 
             self.graph.update_edge_weights()                            # "adversary" generates new edge weights
 
@@ -227,21 +287,92 @@ class Algorithms:
             # calculate P_t+1
             prob_vector = self.update_prob_vector(prob_vector, loss_vector, eta, actions)
 
-        print("\ncalculating total regret...")
+        if prints: print("\ncalculating total regret...")
 
         expected_loss = expected_losses[-1]
         expected_loss_best_action = expected_loss_best_action
         
-        print("\nfinal prob_vector =\t\t\t\t" + str(np.round(prob_vector, 2)))
+        if prints: print("\nfinal prob_vector =\t\t\t\t" + str(np.round(prob_vector, 2)))
         best_action = total_loss_vectors[-1].index(min(total_loss_vectors[-1]))
 
-        print("best action (in hindsight) =\t\t\t" + str(best_action))
+        if prints: print("best action (in hindsight) =\t\t\t" + str(best_action))
 
-        print("\nexpected loss =\t\t\t\t\t" + str(expected_loss))
-        print("expected loss for best action overall =\t\t" + str(expected_loss_best_action))
+        if prints: print("\nexpected loss =\t\t\t\t\t" + str(expected_loss))
+        if prints: print("expected loss for best action overall =\t\t" + str(expected_loss_best_action))
 
         total_regret = total_regrets[-1]
 
-        print("\ntotal regret =\t\t\t\t\t" + str(total_regret))
+        if prints: print("\ntotal regret =\t\t\t\t\t" + str(total_regret))
 
         return total_regrets
+
+    def osmd(self, eta: float, actions: list, rounds: int, game='full', debug=False, prints=False):
+        '''
+        execute the exp2 algorithm and return the total regret, more information is printed into
+        the terminal during execution
+        '''
+        if prints: print("running osmd algo (setting: " + game + ")...")
+
+        losses_sum = 0
+        progress = 0
+        total_loss_vectors = [[0] * len(actions)]
+        expected_losses = []
+        expected_losses_best_action = []
+        total_regrets = []
+        actions_edges_dict = None
+        if game == 'semi':
+            actions_edges_dict = self.actions_with_edge(actions)
+
+        x = self.osmd_init_x(actions)
+        
+        for t in range(1, rounds+1):
+            if t % (rounds/10) == 0:
+                progress += 10
+                if prints: print('round progress: ' + str(progress) + '%')
+
+            pt = self.set_osmd_pt(x, actions)
+            action = self.action(pt)
+        
+            self.graph.update_edge_weights()
+
+            loss_vector_full = self.graph.get_all_edge_weights()
+
+            instantaneous_loss = self.loss(loss_vector_full, actions[action])
+            losses_sum += instantaneous_loss
+
+            # if bandit game, reset the loss vector to an estimated version based on the instantaneous loss
+            if game == 'bandit':
+                loss_vector = self.estimate_loss_vector(pt, actions, action, instantaneous_loss)
+            elif game == 'semi':
+                semi_losses = self.loss_values_semi(actions[action], loss_vector_full)
+                loss_vector = self.estimate_loss_vector_semi(pt, actions, action, semi_losses, actions_edges_dict)
+            else:
+                loss_vector = loss_vector_full
+
+            total_loss_vectors.append(self.total_loss_vector(total_loss_vectors[-1], loss_vector_full, actions))
+            expected_losses.append(losses_sum / t)
+            expected_loss_best_action = (min(total_loss_vectors[-1]) / t)
+            #expected_losses_best_action.append(total_loss_best_action / t)
+            total_regrets.append(expected_losses[-1] - expected_loss_best_action)
+
+            w = self.osmd_middle_guy(x, eta, loss_vector)
+            x = self.osmd_big_guy(actions, w)
+            
+        if prints: print("\ncalculating total regret...")
+
+        expected_loss = expected_losses[-1]
+        expected_loss_best_action = expected_loss_best_action
+        
+        if prints: print("\nfinal prob_vector =\t\t\t\t" + str(np.round(pt, 2)))
+        best_action = total_loss_vectors[-1].index(min(total_loss_vectors[-1]))
+
+        if prints: print("best action (in hindsight) =\t\t\t" + str(best_action))
+
+        if prints: print("\nexpected loss =\t\t\t\t\t" + str(expected_loss))
+        if prints: print("expected loss for best action overall =\t\t" + str(expected_loss_best_action))
+
+        total_regret = total_regrets[-1]
+
+        if prints: print("\ntotal regret =\t\t\t\t\t" + str(total_regret))
+
+        return np.array(total_regrets)
