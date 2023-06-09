@@ -6,24 +6,24 @@ from math import log
 import numpy as np
 from scipy.optimize import Bounds
 import scipy.optimize as spo
-
+from Settings import Setting
 class Algos:
-    def __init__(self, height, length, path_len, start, goal, cost_bound,learning_rate):
-        self.path_len = path_len
-        self.edges_max = (2 * height * length) - height - length
-        self.h = height
-        self.l = length
-        self.start = start
-        self.goal = goal
-        self.cost_bound = cost_bound
+    def __init__(self, setting):
+        game,self.cost_mode,self.learn = setting.give_setting()
+        self.path_len = game.path
+        self.h = game.h
+        self.l = game.l
+        self.edges_max = (2 * self.h * self.l) - self.h - self.l
+        self.start = game.start
+        self.goal = game.goal
         self.cost = None
         self.probabilities = None
         self.paths = None
-        self.learn = learning_rate
         self.bpath=None
-        self.regenerate_cost()
         self.semi_bandit_dict=None
         self.osmd_x=None
+        self.cost_mode = None
+
     def points_to_index(self, p1, p2):
         """
         :param p1: Point from which the edge is coming out of
@@ -74,7 +74,7 @@ class Algos:
         :return: Action a in boolean vertex form and the index of that action a in the list of actions A
         """
         probs = self.probabilities
-        roll = random.random()
+        roll = np.random.uniform()
         total=0
         for i in range(len(probs)):
             total += probs[i]
@@ -82,6 +82,7 @@ class Algos:
                # print(f"ROLLED {roll} RETURNING {i}")
                 #print(self.probabilities)
                 return self.bpath[i],i
+        return self.make_a_choice()
     def get_loss(self,choice):
         """
         :param choice:  boolean vertex of chosen action
@@ -147,13 +148,19 @@ class Algos:
         """
         Draws a new loss vector
         """
-        nums = []
-        for i in range(self.edges_max):
-            nums.append(random.random())
-        multiplication = int(self.cost_bound / 0.5)
-        nums = [multiplication * (i - 0.5) for i in nums]
-        self.cost = nums
+        mode = self.cost_mode
+        if mode == 0:
 
+            nums = np.random.uniform(size=self.edges_max)
+        else:
+            half_size = int (self.edges_max/2)
+            first = np.random.uniform(size=half_size)
+            second = np.random.uniform(low=0.5,high=1,size = self.edges_max-half_size)
+            nums = np.hstack([first,second])
+        self.cost = nums
+        #print(nums)
+    def set_cost_mode(self,mode):
+        self.cost_mode = mode
     def bfs_path(self):
         """
         Runs the bfs algorithm to find all paths from start to goal
@@ -178,6 +185,9 @@ class Algos:
             probs.append(self.probabilities[i]*top/bot)
         #print(probs)
         #print(sum(probs))
+        for num in probs:
+            if num !=num:
+                b=2
         self.probabilities = probs
 
     def run_semi_bandit(self,choice):
@@ -192,7 +202,7 @@ class Algos:
                 summer=0
                 for a in containing:
                     summer+=self.probabilities[a]
-                new_value = (val/summer)*choice[i]
+                new_value = (val/summer)
                 end_cost.append(new_value)
         self.cost = end_cost
 
@@ -246,6 +256,9 @@ class Algos:
             bT = np.array(self.bpath[i]).transpose()
             addition = exp(learn_var * np.dot(bT, zT)) * self.probabilities[i]
             bot += addition
+
+        if bot>10000:
+            b=2
         return bot
 
 
