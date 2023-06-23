@@ -1,15 +1,13 @@
 from point import Point, Path, Edge
 from copy import deepcopy
-import random
 from numpy import exp
 from math import log
 import numpy as np
 from scipy.optimize import Bounds
 import scipy.optimize as spo
-from Settings import Setting
 class Algos:
     def __init__(self, setting):
-        game,self.cost_mode,self.learn = setting.give_setting()
+        game,self.cost_mode,self.learn_osmd,self.learn_exp = setting.give_setting()
         self.path_len = game.path
         self.h = game.h
         self.l = game.l
@@ -22,7 +20,16 @@ class Algos:
         self.bpath=None
         self.semi_bandit_dict=None
         self.osmd_x=None
-        self.cost_mode = None
+        self.learn = None
+        self.init_paths()
+        self.initialize_probabilities()
+
+    def set_exp_eta(self):
+        self.learn = self.learn_exp
+
+    def set_osmd_eta(self):
+        self.learn = self.learn_osmd
+
 
     def points_to_index(self, p1, p2):
         """
@@ -46,7 +53,11 @@ class Algos:
         :return: Whether the point is in the grid graph or not
         """
         return 0 < x < (self.h + 1) and 0 < y < (self.l + 1)
-
+    def describe(self):
+        print(f"I am a game on a {self.h} x {self.l} grid graph.\n")
+        print(f"The starting point is at {self.start}\n")
+        print(f"The goal point is at {self.goal}\n")
+        print(f"The number of paths is {len(self.bpath)}\n")
     def point_can_reach(self, point, depth):
         """
         :param point: Point which we are currently examining
@@ -79,17 +90,14 @@ class Algos:
         for i in range(len(probs)):
             total += probs[i]
             if roll <= total:
-               # print(f"ROLLED {roll} RETURNING {i}")
-                #print(self.probabilities)
                 return self.bpath[i],i
-        return self.make_a_choice()
+        raise Exception
     def get_loss(self,choice):
         """
         :param choice:  boolean vertex of chosen action
         :return: loss incurred by selecting this action
         """
-        #print(choice)
-       # print(self.cost)
+
         return np.dot(self.cost,np.transpose(choice))
     def min_loss(self):
         """
@@ -149,7 +157,7 @@ class Algos:
         Draws a new loss vector
         """
         mode = self.cost_mode
-        if mode == 0:
+        if mode == 'uniform':
 
             nums = np.random.uniform(size=self.edges_max)
         else:
@@ -183,11 +191,6 @@ class Algos:
             path=self.bpath[i]
             top= self.exp2_top(path)
             probs.append(self.probabilities[i]*top/bot)
-        #print(probs)
-        #print(sum(probs))
-        for num in probs:
-            if num !=num:
-                b=2
         self.probabilities = probs
 
     def run_semi_bandit(self,choice):
@@ -208,11 +211,17 @@ class Algos:
 
 
     def semi_bandit_check(self):
+        """
+        Method used to verify if semi-bandit is initiated correctly
+        """
         for k,v in self.semi_bandit_dict.items():
             print(f"{k} : {(v)}")
         for p in self.bpath:
             print(p)
     def precompute_semi_bandit(self):
+        """
+        Method used to precompute the semi-bandit dictionary. It links indexes of edges to paths, which contain these edges.
+        """
         mapper = dict()
         for i in range(self.edges_max):
             mapper[i] = list()
@@ -257,11 +266,10 @@ class Algos:
             addition = exp(learn_var * np.dot(bT, zT)) * self.probabilities[i]
             bot += addition
 
-        if bot>10000:
-            b=2
         return bot
 
-
+    def set_eta(self,eta):
+        self.learn = eta
     def paths_to_boolean(self, paths):
         """
         :param paths: List of Path objects
